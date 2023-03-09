@@ -1,17 +1,16 @@
 #include <Arduino.h>
-#include <imu.h>
 #include <remote.h>
-#include <control.h>
 #include <motor.h>
+#include <imu.h>
+#include <sonar.h>
+#include <control.h>
 
-#define UART Serial7
+#define UART Serial
 #define BAUD_RATE 57600
-
-#define USE_PID
 
 uint32_t loop_timer = 0, debug_timer = 0;
 
-int pwm1, pwm2, pwm3, pwm4;
+int pwm1 = 1000, pwm2, pwm3, pwm4;
 
 void debug(uint32_t time);
 void tuning();
@@ -23,8 +22,9 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
 
   remote_setup();
-  imu_setup();
   motor_setup();
+  imu_setup();
+  sonar_setup();
 
   digitalWrite(LED_BUILTIN, LOW);
   UART.println("Starting loop...");
@@ -39,6 +39,7 @@ void setup() {
 void loop() {
   remote_loop();
   imu_loop();
+  sonar_loop();
 
   if (!arming) {
     angle_pitch = angle_pitch_acc;
@@ -89,6 +90,9 @@ void loop() {
 
     control_pid();
   #else
+    roll_ref = (ch_roll - 1500) / 10; // limit roll_ref to 50 deg
+    pitch_ref = (ch_pitch - 1500) / 10; // limit pitch_ref to 50 deg
+    yaw_ref = (ch_yaw - 1500) / 25; // limit yaw_ref to 20 deg
     
     control_fsfb();
   #endif
@@ -100,22 +104,17 @@ void loop() {
       pwm2 = ch_throttle + pid_output_pitch + pid_output_roll + pid_output_yaw;        //Calculate the pulse for esc 2 (rear-right - CW).
       pwm3 = ch_throttle + pid_output_pitch - pid_output_roll - pid_output_yaw;        //Calculate the pulse for esc 3 (rear-left - CCW).
       pwm4 = ch_throttle - pid_output_pitch - pid_output_roll + pid_output_yaw;        //Calculate the pulse for esc 4 (front-left - CW).
-
-      pwm1 = constrain(pwm1, 1100, 2000);                                                    //Constrain the pulse between 1000 and 2000us.
-      pwm2 = constrain(pwm2, 1100, 2000);                                                    //Constrain the pulse between 1000 and 2000us.
-      pwm3 = constrain(pwm3, 1100, 2000);                                                    //Constrain the pulse between 1000 and 2000us.
-      pwm4 = constrain(pwm4, 1100, 2000);                                                    //Constrain the pulse between 1000 and 2000us.
     #else
       pwm1 = (int) omega2[0] + ch_throttle;                                                  //Calculate the pulse for esc 1 (front-right - CCW).
       pwm2 = (int) omega2[1] + ch_throttle;                                                  //Calculate the pulse for esc 2 (rear-right - CW).
       pwm3 = (int) omega2[2] + ch_throttle;                                                  //Calculate the pulse for esc 3 (rear-left - CCW).
       pwm4 = (int) omega2[3] + ch_throttle;                                                  //Calculate the pulse for esc 4 (front-left - CW).
-
-      pwm1 = constrain(pwm1, 1000, 2000);                                                    //Constrain the pulse between 1000 and 2000us.
-      pwm2 = constrain(pwm2, 1000, 2000);                                                    //Constrain the pulse between 1000 and 2000us.
-      pwm3 = constrain(pwm3, 1000, 2000);                                                    //Constrain the pulse between 1000 and 2000us.
-      pwm4 = constrain(pwm4, 1000, 2000);                                                    //Constrain the pulse between 1000 and 2000us.
     #endif
+
+    pwm1 = constrain(pwm1, 1000, 2000);                                                    //Constrain the pulse between 1000 and 2000us.
+    pwm2 = constrain(pwm2, 1000, 2000);                                                    //Constrain the pulse between 1000 and 2000us.
+    pwm3 = constrain(pwm3, 1000, 2000);                                                    //Constrain the pulse between 1000 and 2000us.
+    pwm4 = constrain(pwm4, 1000, 2000);                                                    //Constrain the pulse between 1000 and 2000us.
   }
   else {
     pwm1 = 1000;
@@ -125,12 +124,12 @@ void loop() {
   }
 
   motor_loop(pwm1, pwm2, pwm3, pwm4);
-
+  motor_loop(pwm1-2, pwm1-3, pwm1-1, pwm1);
 
   if (micros() - debug_timer > 100000) {
     tuning();
-    // debug(loop_timer);
-    // debug_timer = micros();
+    debug(loop_timer);
+    debug_timer = micros();
   }
 
   if (micros() - loop_timer > 4050) UART.println(micros() - loop_timer);                                      //Turn on the LED if the loop time exceeds 4050us.
@@ -139,7 +138,7 @@ void loop() {
 }
 
 void debug(uint32_t time) {
-  String str = "";
+  String str = pwm1;
   str += "Roll:";
   str += angle_roll;
   str += " Pitch:";
@@ -183,6 +182,8 @@ void tuning() {
     char inChar = (char)UART.read();
     switch (inChar)
     {
+    case ' ':
+      pwm1 += 1;
     case 'a':
       pid_p_gain_roll += 0.1;
       UART.print("kp roll = "); UART.println(pid_p_gain_roll);
