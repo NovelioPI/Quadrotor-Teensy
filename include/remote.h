@@ -8,6 +8,17 @@ bfs::SbusData data;
 bool signal_lost = false;
 int16_t ch_roll, ch_pitch, ch_throttle, ch_yaw;
 bool arming;
+bool alt_hold_mode = false;
+
+void failsafe() {
+    if (signal_lost) {
+        ch_roll = 1500;
+        ch_pitch = 1500;
+        ch_throttle = 1000;
+        ch_yaw = 1500;
+        arming = false;
+    }
+}
 
 void remote_setup() {
     sbus_rx.Begin();
@@ -58,8 +69,11 @@ void remote_loop() {
     ch_throttle = constrain(ch_throttle, 1000, 2000);
     ch_yaw = constrain(ch_yaw, 1000, 2000);
 
-    arming = data.ch[4] > 1500 ? 1 : 0;
+    arming = data.ch[4] > 1500 ? true : false;
+    alt_hold_mode = data.ch[5] > 1500 ? true : false;
     signal_lost = data.lost_frame;
   }
+
+  failsafe();
 }
 
