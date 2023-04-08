@@ -27,6 +27,7 @@ float ypr[3];		 // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vec
 VectorInt16 gyro;	 // [x, y, z]			gyro vector
 
 float roll, pitch, yaw;
+float offset_roll, offset_pitch;
 float accelX, accelY, accelZ, gyroX, gyroY, gyroZ;
 float ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
 float ax_mean, ay_mean, az_mean, gx_mean, gy_mean, gz_mean;
@@ -78,6 +79,7 @@ void imu_setup()
 		Serial.print(devStatus);
 		Serial.println(")");
 	}
+
 	Serial.println("IMU Setup Complete");
 }
 
@@ -110,8 +112,6 @@ void imu_loop()
 		roll = ypr[2] * RAD_TO_DEG;
 		pitch = ypr[1] * RAD_TO_DEG;
 		yaw = ypr[0] * RAD_TO_DEG;
-		if (yaw < 0)
-			yaw += 360; // yaw stays between 0 and 360
 
 		raw.getRotation(&gx, &gy, &gz);
 

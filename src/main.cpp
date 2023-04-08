@@ -1,12 +1,15 @@
 #include <Arduino.h>
+
+#define dt 0.002f
+
 #include <remote.h>
 #include <motor.h>
 #include <imu.h>
 #include <sonar.h>
 #include <control.h>
 
-#define UART Serial
-#define BAUD_RATE 57600
+#define UART Serial7
+#define BAUD_RATE 57600 // 57600
 
 uint32_t loop_timer = 0, debug_timer = 0;
 
@@ -15,9 +18,13 @@ int pwm1, pwm2, pwm3, pwm4;
 void debug();
 void tuning();
 
+uint8_t* addSndBuf;
+
 void setup()
 {
+  Serial.begin(115200);
   UART.begin(BAUD_RATE);
+  
   delay(250);
 
   pinMode(LED_BUILTIN, OUTPUT);
@@ -31,6 +38,7 @@ void setup()
   digitalWrite(LED_BUILTIN, LOW);
   UART.println("Starting loop...");
 
+  UART.println("roll pitch yaw alt");
   loop_timer = micros();
 }
 
@@ -39,7 +47,7 @@ void loop()
   imu_loop();
   sonar_loop();
 
-  roll_sensor = roll;
+  roll_sensor = roll - roll_offset;
   pitch_sensor = pitch - pitch_offset;
   yaw_sensor = yaw - yaw_offset;
   alt_sensor = alt - alt_offset;
@@ -57,10 +65,10 @@ void loop()
 
   if (arming)
   {
-    pwm1 = (int)omega2[0]; // Calculate the pulse for esc 1 (front-right - CCW).
-    pwm2 = (int)omega2[1]; // Calculate the pulse for esc 2 (rear-right - CW).
-    pwm3 = (int)omega2[2]; // Calculate the pulse for esc 3 (rear-left - CCW).
-    pwm4 = (int)omega2[3]; // Calculate the pulse for esc 4 (front-left - CW).
+    pwm1 = (int)(omega2[0]) + ch_throttle; // Calculate the pulse for esc 1 (front-right - CCW).
+    pwm2 = (int)(omega2[1]) + ch_throttle; // Calculate the pulse for esc 2 (rear-right - CW).
+    pwm3 = (int)(omega2[2]) + ch_throttle; // Calculate the pulse for esc 3 (rear-left - CCW).
+    pwm4 = (int)(omega2[3]) + ch_throttle; // Calculate the pulse for esc 4 (front-left - CW).
   }
   else
   {
@@ -74,51 +82,17 @@ void loop()
 
   motor_loop(pwm1, pwm2 + 3, pwm3 + 1, pwm4 + 2);
 
-  // if (micros() - debug_timer > 100000) {
-  //   debug();
-  //   debug_timer = micros();
-  // }
-  UART.print("alt:");
-  UART.print(alt);
-  UART.print(" ");
-  UART.print("rate:");
-  UART.println(alt_rate);
+  if (arming && micros() - debug_timer > 20000) {
+    debug();
+    debug_timer = micros();
+  }
 
-  while (micros() - loop_timer < 2000)
-    ;
-  // UART.println(micros() - loop_timer);
+  while (micros() - loop_timer < 2000);
+  Serial.println(micros() - loop_timer);
   loop_timer = micros();
 }
 
 void debug()
 {
-  String str = "";
-  str += "althold:";
-  str += alt_hold_mode;
-  str += " Alt:";
-  str += alt_sensor;
-  str += " ";
-  str += alt_rate_sensor;
-  str += " Roll:";
-  str += roll_sensor;
-  str += " ";
-  str += roll_rate_sensor;
-  str += " Pitch:";
-  str += pitch_sensor;
-  str += " ";
-  str += pitch_rate_sensor;
-  str += " Yaw:";
-  str += yaw_sensor;
-  str += " ";
-  str += yaw_rate_sensor;
-  // str += " PWM:";
-  // str += pwm1;
-  // str += " ";
-  // str += pwm2;
-  // str += " ";
-  // str += pwm3;
-  // str += " ";
-  // str += pwm4;
-
-  UART.println(str);
+  UART.printf("%.3f %.3f %.3f %.3f\r\n", roll_sensor, pitch_sensor, yaw_sensor, alt_sensor);
 }

@@ -1,10 +1,10 @@
 #include <Arduino.h>
 #include <Servo.h>
 
-#define MOTOR_1_PIN  6
-#define MOTOR_2_PIN  5
-#define MOTOR_3_PIN  4
-#define MOTOR_4_PIN  3
+#define MOTOR_1_PIN  5
+#define MOTOR_2_PIN  6
+#define MOTOR_3_PIN  3
+#define MOTOR_4_PIN  4
 
 Servo motor1, motor2, motor3, motor4;
 
