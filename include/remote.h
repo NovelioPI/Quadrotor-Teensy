@@ -11,13 +11,11 @@ bool arming;
 bool alt_hold_mode = false;
 
 void failsafe() {
-    if (signal_lost) {
-        ch_roll = 1500;
-        ch_pitch = 1500;
-        ch_throttle = 1000;
-        ch_yaw = 1500;
-        arming = false;
-    }
+    ch_roll = 1500;
+    ch_pitch = 1500;
+    ch_throttle = 1000;
+    ch_yaw = 1500;
+    arming = false;
 }
 
 void remote_setup() {
@@ -58,6 +56,12 @@ void remote_setup() {
 void remote_loop() {
   if (sbus_rx.Read()) {
     data = sbus_rx.data();
+    signal_lost = data.lost_frame;
+
+    if (signal_lost) {
+      failsafe();
+      return;
+    }
 
     ch_roll = data.ch[0] * 0.615f + 890;
     ch_pitch = data.ch[1] * 0.615f + 890;
@@ -71,9 +75,6 @@ void remote_loop() {
 
     arming = data.ch[4] > 1500 ? true : false;
     alt_hold_mode = data.ch[5] > 1500 ? true : false;
-    signal_lost = data.lost_frame;
   }
-
-  failsafe();
 }
 
