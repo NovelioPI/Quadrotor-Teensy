@@ -1,5 +1,8 @@
 #include <Arduino.h>
 #include <Servo.h>
+#ifdef HWIL
+#include <communication.h>
+#endif
 
 #define MOTOR_1_PIN  5
 #define MOTOR_2_PIN  6
@@ -33,7 +36,7 @@ void motor_loop(int pwm1, int pwm2, int pwm3, int pwm4) {
     pwm2 = constrain(pwm2, 1000, 2000);                                                  //Constrain the pulse between 1000 and 2000us.
     pwm3 = constrain(pwm3, 1000, 2000);                                                    //Constrain the pulse between 1000 and 2000us.
     pwm4 = constrain(pwm4, 1000, 2000);   
-    
+
     motor1.writeMicroseconds(pwm1);
     motor2.writeMicroseconds(pwm2);
     motor3.writeMicroseconds(pwm3);

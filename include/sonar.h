@@ -1,4 +1,7 @@
 #include <Arduino.h>
+#ifdef HWIL
+#include <communication.h>
+#endif
 
 #define SONAR_TRIG 1
 #define SONAR_ECHO 0
@@ -37,6 +40,7 @@ void sonar_setup()
 
 void sonar_loop()
 {
+#ifndef HWIL
     digitalWrite(SONAR_TRIG, LOW);
     delayMicroseconds(2);
     digitalWrite(SONAR_TRIG, HIGH);
@@ -76,6 +80,10 @@ void sonar_loop()
 
     alt_rate_slow = alt_rate_slow * 0.98f + alt_rate_fast * 0.02f;
     alt_rate = alt_rate_slow;
+#else
+    alt = msg.state.z * 100.0f;
+    alt_rate = msg.state.vz * 100.0f;
+#endif
 }
 
 void echo_rising()

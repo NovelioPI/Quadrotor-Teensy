@@ -2,6 +2,9 @@
 #include <Wire.h>
 #include <I2Cdev.h>
 #include <MPU6050_6Axis_MotionApps20.h>
+#ifdef HWIL
+#include <communication.h>
+#endif
 
 MPU6050 mpu;
 MPU6050 raw;
@@ -85,6 +88,7 @@ void imu_setup()
 
 void imu_loop()
 {
+#ifndef HWIL
 	if (!dmpReady)
 		return;
 
@@ -118,22 +122,24 @@ void imu_loop()
 		gyroX = gx / 131.0;
 		gyroY = -gy / 131.0;
 		gyroZ = -gz / 131.0;
-
-		raw.getAcceleration(&ax, &ay, &az);
-
-		accelX = (ax / 16384.0) * gravity.x;
-		accelY = (ay / 16384.0) * gravity.y;
-		accelZ = (az / 16384.0) * gravity.z;
-
-		VectorFloat a;
-		a.x = accelX;
-		a.y = accelY;
-		a.z = accelZ;
-
-		a.rotate(&q);
-
-		vz += (-(a.z - 1) * 0.002f); // cm/s
 	}
+#else
+	q.w = msg.sensors.imu.orientation.w;
+	q.x = msg.sensors.imu.orientation.x;
+	q.y = msg.sensors.imu.orientation.y;
+	q.z = msg.sensors.imu.orientation.z;
+
+	mpu.dmpGetGravity(&gravity, &q);
+	mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+
+	roll = ypr[2] * RAD_TO_DEG;
+	pitch = -ypr[1] * RAD_TO_DEG;
+	yaw = -ypr[0] * RAD_TO_DEG;
+
+	gyroX = msg.sensors.imu.gyro.x * RAD_TO_DEG;
+	gyroY = msg.sensors.imu.gyro.y * RAD_TO_DEG;
+	gyroZ = msg.sensors.imu.gyro.z * RAD_TO_DEG;
+#endif
 }
 
 void meanSensor()
